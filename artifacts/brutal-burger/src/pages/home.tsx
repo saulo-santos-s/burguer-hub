@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { ShoppingBag, Tag, AlertCircle, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingCart, Tag, AlertCircle, Lock, Plus, Minus, Trash2, X, MessageCircle } from "lucide-react";
 import { useListProducts, useListCategories, getListProductsQueryKey, type ListProductsParams } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 
@@ -8,37 +8,21 @@ function formatPrice(price: number): string {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function WhatsAppButton({ product }: { product: { name: string; price: number; quantity: number } }) {
-  const isOutOfStock = product.quantity <= 0;
-
-  const handleClick = () => {
-    const message = `Olá, quero pedir:\n🍔 ${product.name} - ${formatPrice(product.price)}`;
-    const url = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={isOutOfStock}
-      data-testid={`btn-whatsapp-${product.name}`}
-      className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all ${
-        isOutOfStock
-          ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
-          : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95"
-      }`}
-    >
-      <ShoppingBag className="w-4 h-4" />
-      {isOutOfStock ? "Esgotado" : "Pedir no WhatsApp"}
-    </button>
-  );
-}
+type CartItem = {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  imageUrl?: string | null;
+};
 
 type TabType = "all" | "food" | "drink";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [, navigate] = useLocation();
   const keySequenceRef = useRef<string>("");
   const keyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,14 +31,10 @@ export default function Home() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       keySequenceRef.current += e.key.toLowerCase();
-      if (keySequenceRef.current.length > 5) {
-        keySequenceRef.current = keySequenceRef.current.slice(-5);
-      }
+      if (keySequenceRef.current.length > 5) keySequenceRef.current = keySequenceRef.current.slice(-5);
       if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
       keyTimerRef.current = setTimeout(() => { keySequenceRef.current = ""; }, 1500);
-      if (keySequenceRef.current.endsWith("admin")) {
-        navigate("/admin");
-      }
+      if (keySequenceRef.current.endsWith("admin")) navigate("/admin");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -66,16 +46,11 @@ export default function Home() {
   if (activeCategoryId !== null) params.categoryId = activeCategoryId;
 
   const { data: products = [], isLoading } = useListProducts(params, {
-    query: {
-      queryKey: getListProductsQueryKey(params),
-      refetchInterval: 30000,
-    },
+    query: { queryKey: getListProductsQueryKey(params), refetchInterval: 30000 },
   });
 
   const { data: categories = [] } = useListCategories({
-    query: {
-      queryKey: ["categories"],
-    },
+    query: { queryKey: ["categories"] },
   });
 
   const tabs: { id: TabType; label: string }[] = [
@@ -83,6 +58,35 @@ export default function Home() {
     { id: "food", label: "Comidas" },
     { id: "drink", label: "Bebidas" },
   ];
+
+  const addToCart = (product: { id: number; name: string; price: number; imageUrl?: string | null }) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === product.id);
+      if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { id: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl, quantity: 1 }];
+    });
+  };
+
+  const removeOne = (id: number) => {
+    setCart((prev) =>
+      prev.map((i) => i.id === id ? { ...i, quantity: i.quantity - 1 } : i).filter((i) => i.quantity > 0)
+    );
+  };
+
+  const removeItem = (id: number) => setCart((prev) => prev.filter((i) => i.id !== id));
+
+  const cartCount = cart.reduce((acc, i) => acc + i.quantity, 0);
+  const cartTotal = cart.reduce((acc, i) => acc + i.price * i.quantity, 0);
+
+  const getCartQty = (id: number) => cart.find((i) => i.id === id)?.quantity ?? 0;
+
+  const sendWhatsApp = () => {
+    if (cart.length === 0) return;
+    const lines = cart.map((i) => `• ${i.name} x${i.quantity} — ${formatPrice(i.price * i.quantity)}`).join("\n");
+    const message = `Olá! Quero fazer o seguinte pedido:\n\n${lines}\n\n*Total: ${formatPrice(cartTotal)}*`;
+    const url = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,17 +99,28 @@ export default function Home() {
             </h1>
             <p className="text-xs text-muted-foreground font-medium tracking-widest uppercase">Cardápio Digital</p>
           </div>
+
+          {/* Cart button in header */}
+          <button
+            onClick={() => setCartOpen(true)}
+            data-testid="btn-open-cart"
+            className="relative flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full font-bold text-sm hover:opacity-90 active:scale-95 transition-all"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span className="hidden sm:inline">Carrinho</span>
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-foreground text-background text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-b from-card to-background border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-12 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <p className="text-primary font-bold text-sm uppercase tracking-widest mb-3">Artesanal & Brutal</p>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase leading-none">
               Sabor que<br /><span className="text-primary">Respeita</span>
@@ -136,7 +151,7 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Category filter - only show for food tab or all */}
+        {/* Category filter */}
         {(activeTab === "all" || activeTab === "food") && categories.length > 0 && (
           <div className="flex gap-2 flex-wrap mb-6">
             <button
@@ -181,68 +196,100 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map((product, i) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.05 }}
-                data-testid={`card-product-${product.id}`}
-                className="bg-card rounded-xl border border-border overflow-hidden flex flex-col group hover:border-primary/40 transition-colors"
-              >
-                {/* Image */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl opacity-20">
-                      🍔
+            {products.map((product, i) => {
+              const qty = getCartQty(product.id);
+              const outOfStock = product.quantity <= 0;
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                  data-testid={`card-product-${product.id}`}
+                  className="bg-card rounded-xl border border-border overflow-hidden flex flex-col group hover:border-primary/40 transition-colors"
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-4xl opacity-20">🍔</div>
+                    )}
+                    <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
+                      {product.promotion && (
+                        <span className="bg-primary text-primary-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Tag className="w-2.5 h-2.5" />
+                          Promoção
+                        </span>
+                      )}
+                      {outOfStock && (
+                        <span className="bg-destructive text-destructive-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                          Esgotado
+                        </span>
+                      )}
                     </div>
-                  )}
-                  {/* Badges */}
-                  <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
-                    {product.promotion && (
-                      <span className="bg-primary text-primary-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Tag className="w-2.5 h-2.5" />
-                        Promoção
-                      </span>
-                    )}
-                    {product.quantity <= 0 && (
-                      <span className="bg-destructive text-destructive-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                        Esgotado
-                      </span>
-                    )}
                   </div>
-                </div>
 
-                {/* Content */}
-                <div className="p-4 flex flex-col flex-1">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="font-bold text-foreground text-sm leading-tight" data-testid={`text-product-name-${product.id}`}>
-                      {product.name}
-                    </h3>
-                    {product.categoryName && (
-                      <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
-                        {product.categoryName}
+                  {/* Content */}
+                  <div className="p-4 flex flex-col flex-1">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-bold text-foreground text-sm leading-tight" data-testid={`text-product-name-${product.id}`}>
+                        {product.name}
+                      </h3>
+                      {product.categoryName && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
+                          {product.categoryName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">{product.description}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-lg font-black text-primary" data-testid={`text-price-${product.id}`}>
+                        {formatPrice(product.price)}
                       </span>
+                    </div>
+
+                    {/* Add to cart */}
+                    {outOfStock ? (
+                      <div className="w-full flex items-center justify-center py-2.5 px-4 rounded-lg text-sm font-semibold bg-muted text-muted-foreground opacity-50 cursor-not-allowed">
+                        Esgotado
+                      </div>
+                    ) : qty === 0 ? (
+                      <button
+                        onClick={() => addToCart(product)}
+                        data-testid={`btn-add-cart-${product.id}`}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => removeOne(product.id)}
+                          data-testid={`btn-dec-cart-${product.id}`}
+                          className="w-9 h-9 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="font-black text-foreground text-sm flex-1 text-center">{qty}</span>
+                        <button
+                          onClick={() => addToCart(product)}
+                          data-testid={`btn-inc-cart-${product.id}`}
+                          className="w-9 h-9 rounded-lg bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">
-                    {product.description}
-                  </p>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-black text-primary" data-testid={`text-price-${product.id}`}>
-                      {formatPrice(product.price)}
-                    </span>
-                  </div>
-                  <WhatsAppButton product={product} />
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -263,6 +310,134 @@ export default function Home() {
           <Lock className="w-3.5 h-3.5" />
         </button>
       </footer>
+
+      {/* Cart Drawer overlay */}
+      <AnimatePresence>
+        {cartOpen && (
+          <>
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCartOpen(false)}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+            />
+            <motion.div
+              key="drawer"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border z-50 flex flex-col shadow-2xl"
+            >
+              {/* Drawer header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-primary" />
+                  <h2 className="font-black text-lg uppercase tracking-tight">Carrinho</h2>
+                  {cartCount > 0 && (
+                    <span className="bg-primary text-primary-foreground text-xs font-black px-2 py-0.5 rounded-full">
+                      {cartCount} {cartCount === 1 ? "item" : "itens"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setCartOpen(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
+                  data-testid="btn-close-cart"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Items list */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                {cart.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center py-20">
+                    <ShoppingCart className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="font-semibold text-sm">Seu carrinho está vazio</p>
+                    <p className="text-xs mt-1">Adicione itens do cardápio para começar</p>
+                  </div>
+                ) : (
+                  <AnimatePresence initial={false}>
+                    {cart.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-background rounded-xl border border-border p-3 flex items-center gap-3"
+                        data-testid={`cart-item-${item.id}`}
+                      >
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-xl shrink-0">🍔</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{item.name}</p>
+                          <p className="text-xs text-primary font-black">{formatPrice(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => removeOne(item.id)}
+                            className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+                            data-testid={`cart-dec-${item.id}`}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center font-black text-sm">{item.quantity}</span>
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="w-7 h-7 rounded-lg bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center transition-all"
+                            data-testid={`cart-inc-${item.id}`}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors ml-1"
+                            data-testid={`cart-remove-${item.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
+              </div>
+
+              {/* Footer with total + send */}
+              {cart.length > 0 && (
+                <div className="border-t border-border px-5 py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-sm font-medium">Total do pedido</span>
+                    <span className="text-xl font-black text-primary">{formatPrice(cartTotal)}</span>
+                  </div>
+                  <button
+                    onClick={sendWhatsApp}
+                    data-testid="btn-send-whatsapp"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-sm bg-[#25D366] text-white hover:bg-[#1ebe59] active:scale-95 transition-all uppercase tracking-wide"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Enviar Pedido no WhatsApp
+                  </button>
+                  <button
+                    onClick={() => setCart([])}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                    data-testid="btn-clear-cart"
+                  >
+                    Limpar carrinho
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
