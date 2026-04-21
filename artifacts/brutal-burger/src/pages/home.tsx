@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ShoppingBag, Tag, AlertCircle } from "lucide-react";
+import { ShoppingBag, Tag, AlertCircle, Lock } from "lucide-react";
 import { useListProducts, useListCategories, getListProductsQueryKey, type ListProductsParams } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
 
 function formatPrice(price: number): string {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -38,6 +39,26 @@ type TabType = "all" | "food" | "drink";
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [, navigate] = useLocation();
+  const keySequenceRef = useRef<string>("");
+  const keyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      keySequenceRef.current += e.key.toLowerCase();
+      if (keySequenceRef.current.length > 5) {
+        keySequenceRef.current = keySequenceRef.current.slice(-5);
+      }
+      if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
+      keyTimerRef.current = setTimeout(() => { keySequenceRef.current = ""; }, 1500);
+      if (keySequenceRef.current.endsWith("admin")) {
+        navigate("/admin");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
 
   const params: ListProductsParams = {};
   if (activeTab === "food") params.type = "food";
@@ -227,9 +248,20 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-border py-8 text-center text-muted-foreground text-xs">
-        <p className="font-black text-sm uppercase tracking-widest text-foreground mb-1">BRUTAL BURGER</p>
-        <p>Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
+      <footer className="mt-16 border-t border-border py-8 text-muted-foreground text-xs relative">
+        <div className="text-center">
+          <p className="font-black text-sm uppercase tracking-widest text-foreground mb-1">BRUTAL BURGER</p>
+          <p>Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
+        </div>
+        <button
+          onClick={() => navigate("/admin")}
+          title=""
+          aria-label=""
+          className="absolute bottom-6 right-6 opacity-20 hover:opacity-60 transition-opacity duration-300 text-muted-foreground focus:outline-none"
+          tabIndex={-1}
+        >
+          <Lock className="w-3.5 h-3.5" />
+        </button>
       </footer>
     </div>
   );
