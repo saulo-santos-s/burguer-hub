@@ -41,6 +41,9 @@ jobs:
         env:
           BASE_PATH: /burguer-hub/
 
+      - name: Check build output
+        run: ls -la ./artifacts/brutal-burger/dist/public/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
