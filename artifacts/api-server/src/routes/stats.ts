@@ -1,30 +1,32 @@
-import { Router, type IRouter } from "express";
-import { db, productsTable, categoriesTable } from "@workspace/db";
-import { eq, lte, count } from "drizzle-orm";
+import { Router } from "express";
+import { ProductModel, CategoryModel } from "@workspace/db";
 
-const router: IRouter = Router();
+const router = Router();
 
-router.get("/stats/dashboard", async (_req, res): Promise<void> => {
-  const [products, categories] = await Promise.all([
-    db.select().from(productsTable),
-    db.select().from(categoriesTable),
-  ]);
+router.get("/dashboard", async (_req, res): Promise<void> => {
+  try {
+    const [products, totalCategories] = await Promise.all([
+      ProductModel.find(),
+      CategoryModel.countDocuments(),
+    ]);
 
-  const totalProducts = products.length;
-  const totalCategories = categories.length;
-  const promotionProducts = products.filter((p) => p.promotion).length;
-  const outOfStockProducts = products.filter((p) => p.quantity <= 0).length;
-  const foodCount = products.filter((p) => p.type === "food").length;
-  const drinkCount = products.filter((p) => p.type === "drink").length;
+    const totalProducts = products.length;
+    const promotionProducts = products.filter((p) => p.promotion).length;
+    const outOfStockProducts = products.filter((p) => p.quantity <= 0).length;
+    const foodCount = products.filter((p) => p.type === "food").length;
+    const drinkCount = products.filter((p) => p.type === "drink").length;
 
-  res.json({
-    totalProducts,
-    totalCategories,
-    promotionProducts,
-    outOfStockProducts,
-    foodCount,
-    drinkCount,
-  });
+    res.json({
+      totalProducts,
+      totalCategories,
+      promotionProducts,
+      outOfStockProducts,
+      foodCount,
+      drinkCount,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
 });
 
 export default router;

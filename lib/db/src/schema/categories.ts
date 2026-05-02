@@ -1,11 +1,12 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
+import { sql } from "drizzle-orm";
 
-export const categoriesTable = pgTable("categories", {
-  id: serial("id").primaryKey(),
+export const categoriesTable = sqliteTable("categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertCategorySchema = createInsertSchema(categoriesTable).omit({ id: true, createdAt: true });

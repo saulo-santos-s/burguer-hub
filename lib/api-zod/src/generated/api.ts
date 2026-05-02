@@ -25,7 +25,7 @@ export const AdminLoginBody = zod.object({
 export const AdminLoginResponse = zod.object({
   token: zod.string(),
   user: zod.object({
-    id: zod.number(),
+    id: zod.string(),
     email: zod.string(),
     name: zod.string(),
   }),
@@ -42,7 +42,7 @@ export const AdminLogoutResponse = zod.object({
  * @summary Get current admin user
  */
 export const GetMeResponse = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   email: zod.string(),
   name: zod.string(),
 });
@@ -51,7 +51,7 @@ export const GetMeResponse = zod.object({
  * @summary List all categories
  */
 export const ListCategoriesResponseItem = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   name: zod.string(),
   createdAt: zod.string(),
 });
@@ -65,10 +65,23 @@ export const CreateCategoryBody = zod.object({
 });
 
 /**
+ * @summary Get a category
+ */
+export const GetCategoryParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetCategoryResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary Update a category
  */
 export const UpdateCategoryParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const UpdateCategoryBody = zod.object({
@@ -76,7 +89,7 @@ export const UpdateCategoryBody = zod.object({
 });
 
 export const UpdateCategoryResponse = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   name: zod.string(),
   createdAt: zod.string(),
 });
@@ -85,7 +98,7 @@ export const UpdateCategoryResponse = zod.object({
  * @summary Delete a category
  */
 export const DeleteCategoryParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 /**
@@ -93,17 +106,17 @@ export const DeleteCategoryParams = zod.object({
  */
 export const ListProductsQueryParams = zod.object({
   type: zod.enum(["food", "drink"]).optional(),
-  categoryId: zod.coerce.number().nullish(),
+  categoryId: zod.coerce.string().nullish(),
   promotion: zod.enum(["true", "false"]).optional(),
 });
 
 export const ListProductsResponseItem = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   name: zod.string(),
   description: zod.string(),
   price: zod.number(),
   imageUrl: zod.string().nullable(),
-  categoryId: zod.number().nullable(),
+  categoryId: zod.string().nullable(),
   categoryName: zod.string().nullable(),
   type: zod.enum(["food", "drink"]),
   quantity: zod.number(),
@@ -121,7 +134,7 @@ export const CreateProductBody = zod.object({
   description: zod.string(),
   price: zod.number(),
   imageUrl: zod.string().nullish(),
-  categoryId: zod.number().nullish(),
+  categoryId: zod.string().nullish(),
   type: zod.enum(["food", "drink"]),
   quantity: zod.number(),
   promotion: zod.boolean(),
@@ -131,16 +144,16 @@ export const CreateProductBody = zod.object({
  * @summary Get a product
  */
 export const GetProductParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const GetProductResponse = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   name: zod.string(),
   description: zod.string(),
   price: zod.number(),
   imageUrl: zod.string().nullable(),
-  categoryId: zod.number().nullable(),
+  categoryId: zod.string().nullable(),
   categoryName: zod.string().nullable(),
   type: zod.enum(["food", "drink"]),
   quantity: zod.number(),
@@ -153,7 +166,7 @@ export const GetProductResponse = zod.object({
  * @summary Update a product
  */
 export const UpdateProductParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const UpdateProductBody = zod.object({
@@ -161,19 +174,19 @@ export const UpdateProductBody = zod.object({
   description: zod.string().optional(),
   price: zod.number().optional(),
   imageUrl: zod.string().nullish(),
-  categoryId: zod.number().nullish(),
+  categoryId: zod.string().nullish(),
   type: zod.enum(["food", "drink"]).optional(),
   quantity: zod.number().optional(),
   promotion: zod.boolean().optional(),
 });
 
 export const UpdateProductResponse = zod.object({
-  id: zod.number(),
+  id: zod.string(),
   name: zod.string(),
   description: zod.string(),
   price: zod.number(),
   imageUrl: zod.string().nullable(),
-  categoryId: zod.number().nullable(),
+  categoryId: zod.string().nullable(),
   categoryName: zod.string().nullable(),
   type: zod.enum(["food", "drink"]),
   quantity: zod.number(),
@@ -186,7 +199,7 @@ export const UpdateProductResponse = zod.object({
  * @summary Delete a product
  */
 export const DeleteProductParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 /**

@@ -14,7 +14,7 @@ export interface UpdateProductBody {
   /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
-  categoryId?: number | null;
+  categoryId?: string | null;
   type?: UpdateProductBodyType;
   quantity?: number;
   promotion?: boolean;

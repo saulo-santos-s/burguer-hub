@@ -1,14 +1,24 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.SESSION_SECRET ?? "brutal-burger-secret-key";
+// SECURITY: JWT_SECRET must be set in environment variables
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret || jwtSecret.length < 32) {
+  throw new Error(
+    "JWT_SECRET environment variable is required and must be at least 32 characters long. Set it in your .env file",
+  );
+}
+
+const JWT_SECRET: string = jwtSecret;
 
 export interface TokenPayload {
-  adminId: number;
+  adminId: string;
   email: string;
 }
 
 export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  // SECURITY: Reduced expiration to 1 hour for better security
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
 }
 
 export function verifyToken(token: string): TokenPayload {

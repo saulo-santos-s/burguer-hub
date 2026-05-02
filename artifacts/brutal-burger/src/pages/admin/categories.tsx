@@ -17,11 +17,13 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const categorySchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório").max(50, "Nome muito longo"),
+  name: z.string().min(1, "Nome é obrigatório"),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -29,8 +31,8 @@ type CategoryFormValues = z.infer<typeof categorySchema>;
 export default function AdminCategories() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: categories = [], isLoading } = useListCategories({
     query: { queryKey: getListCategoriesQueryKey() },
@@ -56,7 +58,7 @@ export default function AdminCategories() {
     setDialogOpen(true);
   };
 
-  const openEdit = (id: number, name: string) => {
+  const openEdit = (id: string, name: string) => {
     setEditingId(id);
     form.reset({ name });
     setDialogOpen(true);
@@ -65,7 +67,7 @@ export default function AdminCategories() {
   const onSubmit = (data: CategoryFormValues) => {
     if (editingId !== null) {
       updateMutation.mutate(
-        { id: editingId, data },
+        { id: editingId as any, data },
         {
           onSuccess: () => { toast.success("Categoria atualizada"); setDialogOpen(false); invalidate(); },
           onError: () => toast.error("Erro ao atualizar categoria"),
@@ -82,9 +84,9 @@ export default function AdminCategories() {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     deleteMutation.mutate(
-      { id },
+      { id: id as any },
       {
         onSuccess: () => { toast.success("Categoria removida"); setDeleteId(null); invalidate(); },
         onError: () => toast.error("Erro ao remover categoria"),
@@ -129,7 +131,7 @@ export default function AdminCategories() {
                 <div>
                   <p className="font-semibold text-foreground">{cat.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Criada em {new Date(cat.createdAt).toLocaleDateString("pt-BR")}
+                    Criada em {format(new Date(cat.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -162,6 +164,9 @@ export default function AdminCategories() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{editingId !== null ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
+            <DialogDescription>
+              {editingId !== null ? "Altere o nome da categoria selecionada." : "Digite o nome da nova categoria para o cardápio."}
+            </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

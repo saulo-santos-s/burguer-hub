@@ -8,14 +8,14 @@
 import type { ProductType } from "./productType";
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
   /** @nullable */
   imageUrl: string | null;
   /** @nullable */
-  categoryId: number | null;
+  categoryId: string | null;
   /** @nullable */
   categoryName: string | null;
   type: ProductType;

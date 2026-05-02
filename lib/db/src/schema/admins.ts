@@ -1,13 +1,14 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
+import { sql } from "drizzle-orm";
 
-export const adminsTable = pgTable("admins", {
-  id: serial("id").primaryKey(),
+export const adminsTable = sqliteTable("admins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertAdminSchema = createInsertSchema(adminsTable).omit({ id: true, createdAt: true });

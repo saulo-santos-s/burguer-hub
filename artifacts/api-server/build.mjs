@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp, mkdir } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -12,7 +12,19 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
+  const publicSrcDir = path.resolve(artifactDir, "public");
+  const publicDistDir = path.resolve(distDir, "public");
+
   await rm(distDir, { recursive: true, force: true });
+  await mkdir(distDir, { recursive: true });
+
+  // Copy public folder if it exists
+  try {
+    await cp(publicSrcDir, publicDistDir, { recursive: true });
+    console.log("Copied public folder to dist/public");
+  } catch (err) {
+    console.log("No public folder found to copy to dist");
+  }
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
@@ -29,11 +41,11 @@ async function buildAll() {
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
-      "sharp",
+      "mongoose",
       "better-sqlite3",
       "sqlite3",
-      "canvas",
-      "bcrypt",
+      "bcryptjs",
+      "dotenv",
       "argon2",
       "fsevents",
       "re2",

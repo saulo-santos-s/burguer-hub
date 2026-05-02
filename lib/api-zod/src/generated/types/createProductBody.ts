@@ -14,7 +14,7 @@ export interface CreateProductBody {
   /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
-  categoryId?: number | null;
+  categoryId?: string | null;
   type: CreateProductBodyType;
   quantity: number;
   promotion: boolean;

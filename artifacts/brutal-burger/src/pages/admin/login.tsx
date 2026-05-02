@@ -5,7 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, ChevronLeft } from "lucide-react";
+import { Link } from "wouter";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ export default function AdminLogin() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const loginMutation = useAdminLogin();
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,17 +42,31 @@ export default function AdminLogin() {
   });
 
   const onSubmit = (data: LoginFormValues) => {
+    const payload = {
+      ...data,
+      email: data.email.toLowerCase().trim(),
+    };
+
     loginMutation.mutate(
-      { data },
+      { data: payload },
       {
         onSuccess: (res) => {
-          localStorage.setItem("brutal_burger_token", res.token);
+          // SECURITY: Token is now stored in HttpOnly cookie by backend
+          // No longer using localStorage to prevent XSS attacks
           queryClient.invalidateQueries();
           toast.success("Login realizado com sucesso");
           setLocation("/admin/dashboard");
         },
-        onError: (err) => {
-          toast.error(err.error?.error || "Falha ao realizar login");
+        onError: (err: any) => {
+          let errorMessage = "Falha ao realizar login";
+          
+          if (err.status === 0 || !err.status) {
+            errorMessage = "Não foi possível conectar ao servidor. Verifique se o backend está rodando.";
+          } else {
+            errorMessage = err.data?.error || err.data?.message || errorMessage;
+          }
+          
+          toast.error(errorMessage);
         },
       }
     );
@@ -59,6 +75,14 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
+        <div className="flex justify-center">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Voltar para o Cardápio
+            </Button>
+          </Link>
+        </div>
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-black tracking-tighter uppercase text-primary">
             BRUTAL ADMIN
@@ -92,7 +116,25 @@ export default function AdminLogin() {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <div className="relative">
+                        <Input 
+                          type={showPassword ? "text" : "password"} 
+                          placeholder="••••••••" 
+                          className="pr-10"
+                          {...field} 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

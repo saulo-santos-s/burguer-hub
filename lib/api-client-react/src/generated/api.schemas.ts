@@ -23,7 +23,7 @@ export interface LoginBody {
 }
 
 export interface AdminUser {
-  id: number;
+  id: string;
   email: string;
   name: string;
 }
@@ -34,7 +34,7 @@ export interface LoginResponse {
 }
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   createdAt: string;
 }
@@ -55,14 +55,14 @@ export const ProductType = {
 } as const;
 
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
   /** @nullable */
   imageUrl: string | null;
   /** @nullable */
-  categoryId: number | null;
+  categoryId: string | null;
   /** @nullable */
   categoryName: string | null;
   type: ProductType;
@@ -87,7 +87,7 @@ export interface CreateProductBody {
   /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
-  categoryId?: number | null;
+  categoryId?: string | null;
   type: CreateProductBodyType;
   quantity: number;
   promotion: boolean;
@@ -108,7 +108,7 @@ export interface UpdateProductBody {
   /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
-  categoryId?: number | null;
+  categoryId?: string | null;
   type?: UpdateProductBodyType;
   quantity?: number;
   promotion?: boolean;
@@ -128,7 +128,7 @@ export type ListProductsParams = {
   /**
    * @nullable
    */
-  categoryId?: number | null;
+  categoryId?: string | null;
   promotion?: ListProductsPromotion;
 };
 

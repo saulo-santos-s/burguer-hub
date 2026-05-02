@@ -1,6 +1,7 @@
-import { Package, Tag, TrendingUp, AlertTriangle } from "lucide-react";
+import { Package, Tag, TrendingUp, AlertTriangle, Coffee, Utensils } from "lucide-react";
 import { useGetDashboardStats, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { useMemo } from "react";
 
 function StatCard({ icon: Icon, label, value, color }: {
   icon: typeof Package;
@@ -25,7 +26,7 @@ export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetDashboardStats({
     query: {
       queryKey: getGetDashboardStatsQueryKey(),
-      refetchInterval: 15000,
+      staleTime: 30000,
     },
   });
 
@@ -75,13 +76,13 @@ export default function AdminDashboard() {
             color="bg-destructive/10 text-destructive"
           />
           <StatCard
-            icon={Package}
+            icon={Utensils}
             label="Comidas"
             value={stats?.foodCount ?? 0}
             color="bg-orange-500/10 text-orange-400"
           />
           <StatCard
-            icon={Package}
+            icon={Coffee}
             label="Bebidas"
             value={stats?.drinkCount ?? 0}
             color="bg-cyan-500/10 text-cyan-400"

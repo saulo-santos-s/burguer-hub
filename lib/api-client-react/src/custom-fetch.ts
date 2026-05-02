@@ -237,7 +237,14 @@ async function parseJsonBody(
   response: Response,
   requestInfo: { method: string; url: string },
 ): Promise<unknown> {
-  const raw = await response.text();
+  let raw: string;
+  try {
+    raw = await response.text();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read response body from ${requestInfo.method} ${response.url || requestInfo.url}: ${message}`);
+  }
+  
   const normalized = stripBom(raw);
 
   if (normalized.trim() === "") {
@@ -260,10 +267,20 @@ async function parseErrorBody(response: Response, method: string): Promise<unkno
 
   // Fall back to text when blob() is unavailable (e.g. some React Native builds).
   if (mediaType && !isJsonMediaType(mediaType) && !isTextMediaType(mediaType)) {
-    return typeof response.blob === "function" ? response.blob() : response.text();
+    try {
+      return typeof response.blob === "function" ? response.blob() : response.text();
+    } catch {
+      return null;
+    }
   }
 
-  const raw = await response.text();
+  let raw: string;
+  try {
+    raw = await response.text();
+  } catch {
+    return null;
+  }
+  
   const normalized = stripBom(raw);
   const trimmed = normalized.trim();
 
@@ -360,7 +377,12 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const response = await fetch(input, { 
+    ...init, 
+    method, 
+    headers,
+    credentials: "include" // REQUIRED: Ensure cookies are sent and received
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

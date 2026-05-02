@@ -2,7 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetMe, getGetMeQueryKey, useAdminLogout } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Package, Tags, LogOut, Loader2, Menu } from "lucide-react";
+import { LayoutDashboard, Package, Tags, LogOut, Loader2, Menu, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -60,6 +60,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <Tags className="w-5 h-5" />
         Categorias
       </Link>
+      <div className="pt-4 mt-4 border-t border-border/50">
+        <Link href="/" className="flex items-center gap-3 px-3 py-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors font-medium">
+          <ExternalLink className="w-5 h-5" />
+          Ver Site Público
+        </Link>
+      </div>
     </>
   );
 

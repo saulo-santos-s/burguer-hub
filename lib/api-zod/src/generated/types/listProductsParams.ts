@@ -13,6 +13,6 @@ export type ListProductsParams = {
   /**
    * @nullable
    */
-  categoryId?: number | null;
+  categoryId?: string | null;
   promotion?: ListProductsPromotion;
 };

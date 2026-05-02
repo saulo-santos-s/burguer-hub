@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Loader2, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,13 +24,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { formatPrice } from "@/lib/format";
 
 const productSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
-  price: z.coerce.number().positive("Preço deve ser positivo"),
-  imageUrl: z.string().url("URL inválida").optional().or(z.literal("")),
-  categoryId: z.coerce.number().optional().nullable(),
+  price: z.coerce.number().min(0, "Preço não pode ser negativo"),
+  imageUrl: z.string().optional().or(z.literal("")),
+  categoryId: z.string().optional().nullable(),
   type: z.enum(["food", "drink"]),
   quantity: z.coerce.number().int().min(0, "Quantidade não pode ser negativa"),
   promotion: z.boolean(),
@@ -39,27 +40,23 @@ const productSchema = z.object({
 type ProductFormValues = z.infer<typeof productSchema>;
 
 type ProductForForm = {
-  id?: number;
+  id?: string;
   name: string;
   description: string;
   price: number;
   imageUrl?: string | null;
-  categoryId?: number | null;
+  categoryId?: string | null;
   type: "food" | "drink";
   quantity: number;
   promotion: boolean;
 };
-
-function formatPrice(price: number): string {
-  return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 export default function AdminProducts() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductForForm | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: products = [], isLoading } = useListProducts(undefined, {
     query: { queryKey: getListProductsQueryKey() },
@@ -123,12 +120,12 @@ export default function AdminProducts() {
     const payload = {
       ...data,
       imageUrl: data.imageUrl || null,
-      categoryId: data.categoryId ?? null,
+      categoryId: data.categoryId === null || data.categoryId === undefined ? null : data.categoryId,
     };
 
     if (editingProduct?.id) {
       updateMutation.mutate(
-        { id: editingProduct.id, data: payload },
+        { id: editingProduct.id as any, data: payload },
         {
           onSuccess: () => {
             toast.success("Produto atualizado");
@@ -140,7 +137,7 @@ export default function AdminProducts() {
       );
     } else {
       createMutation.mutate(
-        { data: payload },
+        { data: payload as any },
         {
           onSuccess: () => {
             toast.success("Produto criado");
@@ -153,9 +150,9 @@ export default function AdminProducts() {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     deleteMutation.mutate(
-      { id },
+      { id: id as any },
       {
         onSuccess: () => {
           toast.success("Produto removido");
@@ -167,9 +164,10 @@ export default function AdminProducts() {
     );
   };
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => 
+    products.filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase())
+    ), [products, search]);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -283,13 +281,16 @@ export default function AdminProducts() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
+            <DialogDescription>
+              {editingProduct ? "Altere as informações do produto abaixo." : "Preencha os dados para cadastrar um novo produto."}
+            </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome</FormLabel>
-                  <FormControl><Input placeholder="X-Burger" {...field} data-testid="input-product-name" /></FormControl>
+                  <FormControl><Input placeholder="Ex: Burger Clássico" {...field} data-testid="input-product-name" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -351,8 +352,8 @@ export default function AdminProducts() {
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
                     <Select
-                      onValueChange={(v) => field.onChange(v === "none" ? null : Number(v))}
-                      value={field.value != null ? String(field.value) : "none"}
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                      value={field.value !== null && field.value !== undefined ? String(field.value) : "none"}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-product-category">

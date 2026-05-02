@@ -128,6 +128,30 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /categories/{id}:
+    get:
+      operationId: getCategory
+      tags: [categories]
+      summary: Get a category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Category info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
     patch:
       operationId: updateCategory
       tags: [categories]
@@ -137,7 +161,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -167,7 +191,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "204":
           description: Deleted
@@ -194,7 +218,7 @@ paths:
           in: query
           required: false
           schema:
-            type: ["integer", "null"]
+            type: ["string", "null"]
         - name: promotion
           in: query
           required: false
@@ -245,7 +269,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Product
@@ -269,7 +293,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -299,7 +323,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "204":
           description: Deleted
@@ -375,7 +399,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         email:
           type: string
         name:
@@ -389,7 +413,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         createdAt:
@@ -417,7 +441,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         name:
           type: string
         description:
@@ -427,7 +451,7 @@ components:
         imageUrl:
           type: ["string", "null"]
         categoryId:
-          type: ["integer", "null"]
+          type: ["string", "null"]
         categoryName:
           type: ["string", "null"]
         type:
@@ -467,7 +491,7 @@ components:
         imageUrl:
           type: ["string", "null"]
         categoryId:
-          type: ["integer", "null"]
+          type: ["string", "null"]
         type:
           type: string
           enum: [food, drink]
@@ -495,7 +519,7 @@ components:
         imageUrl:
           type: ["string", "null"]
         categoryId:
-          type: ["integer", "null"]
+          type: ["string", "null"]
         type:
           type: string
           enum: [food, drink]

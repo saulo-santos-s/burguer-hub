@@ -1,15 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Tag, AlertCircle, Lock, Plus, Minus, Trash2, X, MessageCircle } from "lucide-react";
 import { useListProducts, useListCategories, getListProductsQueryKey, type ListProductsParams } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
-
-function formatPrice(price: number): string {
-  return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+import { formatPrice } from "@/lib/format";
 
 type CartItem = {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
@@ -20,7 +17,7 @@ type TabType = "all" | "food" | "drink";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [, navigate] = useLocation();
@@ -40,18 +37,29 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate]);
 
-  const params: ListProductsParams = {};
-  if (activeTab === "food") params.type = "food";
-  if (activeTab === "drink") params.type = "drink";
-  if (activeCategoryId !== null) params.categoryId = activeCategoryId;
+  const params = useMemo((): ListProductsParams => {
+    const p: ListProductsParams = {};
+    if (activeTab === "food") p.type = "food";
+    if (activeTab === "drink") p.type = "drink";
+    if (activeCategoryId !== null) p.categoryId = activeCategoryId;
+    return p;
+  }, [activeTab, activeCategoryId]);
 
   const { data: products = [], isLoading } = useListProducts(params, {
-    query: { queryKey: getListProductsQueryKey(params), refetchInterval: 30000 },
+    query: { 
+      queryKey: getListProductsQueryKey(params), 
+      staleTime: 30000,
+    },
   });
+
+  const productList = Array.isArray(products) ? products : [];
 
   const { data: categories = [] } = useListCategories({
     query: { queryKey: ["categories"] },
   });
+
+  // Safe access to categories since it might not be an array initially or if the API fails
+  const categoryList = Array.isArray(categories) ? categories : [];
 
   const tabs: { id: TabType; label: string }[] = [
     { id: "all", label: "Todos" },
@@ -59,7 +67,7 @@ export default function Home() {
     { id: "drink", label: "Bebidas" },
   ];
 
-  const addToCart = (product: { id: number; name: string; price: number; imageUrl?: string | null }) => {
+  const addToCart = (product: { id: string; name: string; price: number; imageUrl?: string | null }) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
@@ -67,25 +75,25 @@ export default function Home() {
     });
   };
 
-  const removeOne = (id: number) => {
+  const removeOne = (id: string) => {
     setCart((prev) =>
       prev.map((i) => i.id === id ? { ...i, quantity: i.quantity - 1 } : i).filter((i) => i.quantity > 0)
     );
   };
 
-  const removeItem = (id: number) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const removeItem = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
 
   const cartCount = cart.reduce((acc, i) => acc + i.quantity, 0);
   const cartTotal = cart.reduce((acc, i) => acc + i.price * i.quantity, 0);
 
-  const getCartQty = (id: number) => cart.find((i) => i.id === id)?.quantity ?? 0;
+  const getCartQty = (id: string) => cart.find((i) => i.id === id)?.quantity ?? 0;
 
   const sendWhatsApp = () => {
     if (cart.length === 0) return;
-    const lines = cart.map((i) => `• ${i.name} x${i.quantity} — ${formatPrice(i.price * i.quantity)}`).join("\n");
-    const message = `Olá! Quero fazer o seguinte pedido:\n\n${lines}\n\n*Total: ${formatPrice(cartTotal)}*`;
+    const lines = cart.map((i) => `✅ *${i.name}* x${i.quantity} — ${formatPrice(i.price * i.quantity)}`).join("\n");
+    const message = `🍔 *NOVO PEDIDO - BRUTAL BURGER* 🍔\n\n${lines}\n\n💰 *Total: ${formatPrice(cartTotal)}*\n\n📍 _Por favor, confirme os detalhes da entrega._`;
     const url = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -152,7 +160,7 @@ export default function Home() {
         </div>
 
         {/* Category filter */}
-        {(activeTab === "all" || activeTab === "food") && categories.length > 0 && (
+        {(activeTab === "all" || activeTab === "food") && categoryList.length > 0 && (
           <div className="flex gap-2 flex-wrap mb-6">
             <button
               onClick={() => setActiveCategoryId(null)}
@@ -165,7 +173,7 @@ export default function Home() {
             >
               Todas
             </button>
-            {categories.map((cat) => (
+            {categoryList.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
@@ -189,14 +197,14 @@ export default function Home() {
               <div key={i} className="bg-card rounded-xl border border-border animate-pulse h-80" />
             ))}
           </div>
-        ) : products.length === 0 ? (
+        ) : productList.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-40" />
             <p className="font-medium">Nenhum produto encontrado</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map((product, i) => {
+            {productList.map((product, i) => {
               const qty = getCartQty(product.id);
               const outOfStock = product.quantity <= 0;
               return (
@@ -214,10 +222,11 @@ export default function Home() {
                       <img
                         src={product.imageUrl}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${outOfStock ? "grayscale opacity-60" : ""}`}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-4xl opacity-20">🍔</div>
+                      <div className={`w-full h-full flex items-center justify-center text-4xl opacity-20 ${outOfStock ? "grayscale" : ""}`}>🍔</div>
                     )}
                     <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
                       {product.promotion && (
@@ -227,7 +236,7 @@ export default function Home() {
                         </span>
                       )}
                       {outOfStock && (
-                        <span className="bg-destructive text-destructive-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                        <span className="bg-destructive text-destructive-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full z-10">
                           Esgotado
                         </span>
                       )}
@@ -330,12 +339,15 @@ export default function Home() {
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               className="fixed right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border z-50 flex flex-col shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cart-title"
             >
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-primary" />
-                  <h2 className="font-black text-lg uppercase tracking-tight">Carrinho</h2>
+                  <h2 className="font-black text-lg uppercase tracking-tight" id="cart-title">Carrinho</h2>
                   {cartCount > 0 && (
                     <span className="bg-primary text-primary-foreground text-xs font-black px-2 py-0.5 rounded-full">
                       {cartCount} {cartCount === 1 ? "item" : "itens"}
@@ -346,6 +358,7 @@ export default function Home() {
                   onClick={() => setCartOpen(false)}
                   className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
                   data-testid="btn-close-cart"
+                  aria-label="Fechar carrinho"
                 >
                   <X className="w-4 h-4" />
                 </button>
